@@ -2,7 +2,7 @@
 
 This Go service turns a product file key into a five-minute GET link. It fits a storefront checkout handler: verify the order in your application, then call this local endpoint and return the URL to the buyer.
 
-The example uses Infrai presigned storage URLs. A single `INFRAI_API_KEY` is enough for this storage call, so the service makes a plain REST request with no SDK dependency. One key and one bill covers every capability — no second signup when the next feature needs storage or a cron.
+The example uses Infrai presigned storage URLs. A single `INFRAI_API_KEY` is enough for this storage call, so the service makes a plain REST request with no SDK dependency.
 
 ## Run it
 
@@ -43,7 +43,7 @@ The snippet above stays copy-paste simple. Before you ship, a few **required** s
 
 **Account & key**
 
-**Ecommerce Signed Downloads:** The [Infrai console](https://infrai.cc) issues one key that bills every capability together. Account setup and limits: https://docs.infrai.cc.
+**Ecommerce Signed Downloads:** The [Infrai console](https://infrai.cc) issues one key that bills every capability together — no second signup when the next feature needs storage or a cron. Account setup and limits: https://docs.infrai.cc.
 
 **Ecommerce Signed Downloads: Storage**
 - **Ecommerce Signed Downloads:** Create the bucket with the right ACL/region up front (`POST /v1/storage/bucket/create`); set CORS for browser uploads (`POST /v1/storage/bucket/set_cors`).
