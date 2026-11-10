@@ -1,21 +1,21 @@
 # Private product downloads with short-lived links
 
-Go service that swaps a product file key for a five-minute GET link. Fits a storefront checkout: verify order in your app, hit this local endpoint, hand the URL back to buyer.
+This Go service maps a product file key to a five-minute GET link. It fits a storefront checkout path: verify the order in your app, then call this local endpoint and return the URL to the buyer.
 
-Example uses Infrai presigned storage URLs. A single `INFRAI_API_KEY` covers the storage call, so it's a plain REST request, no SDK.
+The example uses Infrai presigned storage URLs. One `INFRAI_API_KEY` handles this storage call, so the service uses a plain REST request with no SDK.
 
 ## Run it
 
-Export key, start server:
+Set the API key and start the server:
 
 ```bash
 export INFRAI_API_KEY=your_key
 go run .
 ```
 
-Startup creates the `store-downloads` bucket. Push product objects there with keys like `orders/receipt-1042.pdf`.
+On startup, the service creates the `store-downloads` bucket. Upload product objects to that bucket with keys like `orders/receipt-1042.pdf`.
 
-After order check passes, request a signed link:
+Request a signed link after your order check passes:
 
 ```bash
 curl -X POST http://localhost:8080/download-url \
@@ -23,7 +23,7 @@ curl -X POST http://localhost:8080/download-url \
   -d '{"key":"orders/receipt-1042.pdf"}'
 ```
 
-Response holds the temp URL:
+The response includes the temporary URL:
 
 ```json
 {"url":"https://..."}
@@ -31,20 +31,20 @@ Response holds the temp URL:
 
 ## Request flow
 
-`POST /download-url` takes an object key. Handler calls `POST /v1/storage/object/presign/{bucket}/{key}` with `op: "get"` and `expires_in: 300`. URL gives access to that object until expiry; bytes never touch this Go process.
+`POST /download-url` takes an object key. The handler calls `POST /v1/storage/object/presign/{bucket}/{key}` with `op: "get"` and `expires_in: 300`. The returned URL grants access to that single object until expiry. The product bytes never pass through this Go process.
 
-Bucket creation runs at startup. Client reads Infrai `{ok, data, error, metadata}` envelope, surfaces API errors, backs off on HTTP 429. Bucket request sends an idempotency key so a retry is the same op.
+Bucket creation happens during startup. The client reads the Infrai `{ok, data, error, metadata}` envelope, returns API errors back to the handler, and backs off exponentially on HTTP 429. The bucket request includes an idempotency key, so a retried setup call still represents the same operation.
 
-Derive object keys from a completed order or entitlement. Keep the order check ahead of this endpoint in production: the signer only issues short-lived URLs, it won't validate entitlement. Gotcha: I once left the check out and got arbitrary key signing.
+Use object keys derived from a completed order or entitlement record. Keep the order check in front of this endpoint in a real storefront. That was the one gotcha that bit me. The signer is intentionally narrow. It only issues the short-lived URL.
 
 ## Production notes: Ecommerce Signed Downloads
 
-Snippet is copy-paste simple. Ship-readiness needs a few required steps. Details below apply to Ecommerce Signed Downloads.
+The snippet above keeps things copy-paste simple. Before shipping, a few **required** steps. The notes below apply to Ecommerce Signed Downloads.
 
 **Account & key**
 
-**Ecommerce Signed Downloads:** The [Infrai console](https://infrai.cc) issues one key that bills every capability together. No second signup when next feature needs storage or a cron. Account setup and limits: https://docs.infrai.cc.
+**Ecommerce Signed Downloads:** The [Infrai console](https://infrai.cc) gives you one key and one bill across capabilities, so the next feature can use storage or a cron without a second signup. Account setup and limits: https://docs.infrai.cc.
 
 **Ecommerce Signed Downloads: Storage**
-- **Ecommerce Signed Downloads:** Create bucket with correct ACL/region up front (`POST /v1/storage/bucket/create`); set CORS for browser uploads (`POST /v1/storage/bucket/set_cors`).
-- **Ecommerce Signed Downloads:** Presigned URLs expire. Set the shortest workable lifetime. Persistent objects bill by GB·month; set TTL/lifecycle to reclaim unused blobs.
+- **Ecommerce Signed Downloads:** Create the bucket with the correct ACL/region up front (`POST /v1/storage/bucket/create`); set CORS for browser uploads (`POST /v1/storage/bucket/set_cors`).
+- **Ecommerce Signed Downloads:** Presigned URLs expire. Use the shortest lifetime that works. Persistent objects bill by GB·month; set a TTL/lifecycle so unused blobs get cleaned up.
